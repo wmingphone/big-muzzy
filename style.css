@@ -691,6 +691,36 @@ button { font-family: inherit; }
 .vm-watched-btn:active { opacity: 0.85; }
 .vm-watched-btn.done { background: #555; cursor: default; }
 
+.video-link-panel {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+}
+.video-link-panel p {
+  color: rgba(255,255,255,0.82);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.video-link-btn,
+.video-link-secondary {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 14px;
+  padding: 13px;
+  font-size: 14px;
+  font-weight: 800;
+}
+.video-link-btn {
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+  color: #fff;
+}
+.video-link-secondary {
+  background: rgba(255,255,255,0.10);
+  color: #dbeafe;
+  border: 1px solid rgba(255,255,255,0.16);
+}
+
 
 /* ── Toast ── */
 .toast {

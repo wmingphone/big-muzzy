@@ -3,6 +3,7 @@
 // ============================================================
 
 const BASE = 'https://archive.org/download/muzzy-in-english/'
+const DOMESTIC_VIDEO_SOURCE = 'bilibili-search'
 
 const EPISODES = [
   { id: 1,  part: 1, title: '你好，我是 Muzzy',  en: "Hello, I'm Muzzy",    emoji: '👋', videoUrl: BASE + '01%20Muzzy%20In%20Gondoland%2001.mp4' },
@@ -18,6 +19,34 @@ const EPISODES = [
   { id: 11, part: 2, title: '机器人',              en: 'The Robot',           emoji: '🤖', videoUrl: BASE + '02%20Muzzy%20Comes%20Back%2005.mp4' },
   { id: 12, part: 2, title: '再见了',              en: 'Goodbye Again',       emoji: '🌟', videoUrl: BASE + '02%20Muzzy%20Comes%20Back%2006.mp4' },
 ]
+
+function episodeSearchKeyword(ep) {
+  const epNum = ep.part === 1 ? ep.id : ep.id - 6
+  const series = ep.part === 1 ? 'Muzzy In Gondoland' : 'Muzzy Comes Back'
+  return `Big Muzzy ${series} ${String(epNum).padStart(2, '0')}`
+}
+
+function bilibiliSearchUrl(ep) {
+  return `https://search.bilibili.com/all?keyword=${encodeURIComponent(episodeSearchKeyword(ep))}`
+}
+
+function getVideoSource(ep) {
+  if (DOMESTIC_VIDEO_SOURCE === 'bilibili-search') {
+    return {
+      type: 'external',
+      label: '打开国内视频搜索',
+      url: bilibiliSearchUrl(ep),
+      backupUrl: ep.videoUrl,
+    }
+  }
+
+  return {
+    type: 'direct',
+    label: '在线播放',
+    url: ep.videoUrl,
+    backupUrl: bilibiliSearchUrl(ep),
+  }
+}
 
 const VOCAB = [
   // 颜色
@@ -289,7 +318,7 @@ function renderRecommended() {
         <div class="rec-en">${next.en}</div>
       </div>
       <div class="rec-btns">
-        <button class="rec-play-btn" onclick="openVideo(${next.id})">▶ 看视频</button>
+        <button class="rec-play-btn" onclick="openVideo(${next.id})">▶ 找视频</button>
         <button class="rec-btn" onclick="watchEpisode(${next.id})">看完了 ✓</button>
       </div>
     </div>
@@ -348,7 +377,7 @@ function renderEpisodes() {
             <div class="ep-title">${ep.title}</div>
             <div class="ep-en">${ep.en}</div>
             <div class="ep-actions">
-              <button class="ep-play-btn" onclick="openVideo(${ep.id})">▶ 看视频</button>
+              <button class="ep-play-btn" onclick="openVideo(${ep.id})">▶ 找视频</button>
               <button class="ep-mark-btn ${done ? 'marked' : ''}" onclick="toggleEpisode(${ep.id})">
                 ${done ? '✓ 已看' : '标记已看'}
               </button>
@@ -381,13 +410,25 @@ let currentVideoEpId = null
 function openVideo(epId) {
   const ep = EPISODES.find(e => e.id === epId)
   currentVideoEpId = epId
+  const source = getVideoSource(ep)
+
+  if (source.type === 'external') {
+    const win = window.open(source.url, '_blank', 'noopener,noreferrer')
+    if (win) {
+      showToast('已打开国内视频搜索页')
+      return
+    }
+
+    showVideoLinkFallback(ep, source)
+    return
+  }
 
   const epNum = ep.part === 1 ? ep.id : ep.id - 6
   document.getElementById('vm-title').textContent =
     `Part ${ep.part} · 第 ${epNum} 集  ${ep.title}`
 
   const video = document.getElementById('vm-video')
-  video.src = ep.videoUrl
+  video.src = source.url
   video.load()
   video.play().catch(() => {})
 
@@ -400,10 +441,36 @@ function openVideo(epId) {
   document.getElementById('video-modal').classList.add('open')
 }
 
+function showVideoLinkFallback(ep, source) {
+  const epNum = ep.part === 1 ? ep.id : ep.id - 6
+  document.getElementById('vm-title').textContent =
+    `Part ${ep.part} · 第 ${epNum} 集  ${ep.title}`
+
+  const video = document.getElementById('vm-video')
+  video.pause()
+  video.removeAttribute('src')
+  video.load()
+
+  document.querySelector('.vm-footer').innerHTML = `
+    <div class="video-link-panel">
+      <p>浏览器拦截了新窗口，请手动打开国内视频搜索页。</p>
+      <a class="video-link-btn" href="${source.url}" target="_blank" rel="noopener noreferrer">打开国内视频搜索</a>
+      <a class="video-link-secondary" href="${source.backupUrl}" target="_blank" rel="noopener noreferrer">备用 archive.org 链接</a>
+      <button class="vm-watched-btn" id="vm-watched-btn" onclick="markWatchedFromModal()">看完了，标记已看 ✓</button>
+    </div>
+  `
+  document.getElementById('video-modal').classList.add('open')
+}
+
 function closeVideo() {
   const video = document.getElementById('vm-video')
   video.pause()
   video.src = ''
+  document.querySelector('.vm-footer').innerHTML = `
+    <button class="vm-watched-btn" id="vm-watched-btn" onclick="markWatchedFromModal()">
+      看完了，标记已看 ✓
+    </button>
+  `
   document.getElementById('video-modal').classList.remove('open')
   currentVideoEpId = null
 }
@@ -622,7 +689,7 @@ function renderAbout() {
       <article class="about-card">
         <div class="about-icon">📺</div>
         <h3>视频来源</h3>
-        <p>视频播放地址来自 archive.org 的公开在线播放链接。公开视频可能受版权、地区或网络状态影响。</p>
+        <p>公开版优先打开国内平台搜索页，避免 archive.org 在手机和国内网络中加载失败。archive.org 链接仅作为备用参考。</p>
       </article>
       <article class="about-card">
         <div class="about-icon">🔊</div>
@@ -638,7 +705,7 @@ function renderAbout() {
 
     <div class="public-note">
       <strong>公开分享提示：</strong>
-      本页面是个人学习记录工具，不是 Big Muzzy 官方产品。公开上线时请用于免费学习交流，不要用于收费课程、广告推广或暗示官方授权。
+      本页面是个人学习记录工具，不是 Big Muzzy 官方产品。公开上线时请用于免费学习交流，不要上传、售卖或嵌入未经授权的视频内容。
     </div>
   `
 }
