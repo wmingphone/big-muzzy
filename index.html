@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一个适合儿童每日英语启蒙的 Big Muzzy 学习记录网页，包含视频进度、单词练习、星星奖励和本地成就。">
+  <title>Big Muzzy 每日学习</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 顶部导航 -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-emoji">🐾</span>
+        <div>
+          <div class="logo-title">Big Muzzy</div>
+          <div class="logo-sub">每日英语学习</div>
+        </div>
+      </div>
+      <div class="streak-box">
+        <span>🔥</span>
+        <span class="streak-num" id="streak-num">0</span>
+        <span class="streak-label">天</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 问候横幅 -->
+  <div class="banner">
+    <div class="banner-greeting" id="greeting"></div>
+    <div class="banner-date" id="today-date"></div>
+    <div class="banner-stars">⭐ 已获得 <span id="total-stars">0</span> 颗星星</div>
+  </div>
+
+  <!-- 进度概览 -->
+  <div class="progress-row">
+    <div class="prog-card">
+      <div class="prog-emoji">📺</div>
+      <div class="prog-info">
+        <div class="prog-label">看视频</div>
+        <div class="prog-val"><span id="ep-count">0</span>/12</div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" id="ep-fill"></div></div>
+    </div>
+    <div class="prog-card">
+      <div class="prog-emoji">📖</div>
+      <div class="prog-info">
+        <div class="prog-label">学单词</div>
+        <div class="prog-val"><span id="voc-count">0</span>/60</div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" id="voc-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- 标签导航 -->
+  <nav class="tabs">
+    <button class="tab active" data-tab="today">🌞 今日任务</button>
+    <button class="tab" data-tab="episodes">📺 看视频</button>
+    <button class="tab" data-tab="vocab">📖 学单词</button>
+    <button class="tab" data-tab="history">🏆 成就</button>
+    <button class="tab" data-tab="about">ℹ️ 说明</button>
+  </nav>
+
+  <!-- 内容区 -->
+  <main class="main">
+
+    <!-- 今日任务 -->
+    <section class="tab-pane active" id="pane-today">
+      <h2 class="section-title">📋 今日任务</h2>
+      <div id="task-list"></div>
+
+      <h2 class="section-title">📺 今日推荐</h2>
+      <div id="recommended-ep"></div>
+
+      <h2 class="section-title">✨ 今日单词预览</h2>
+      <div id="daily-vocab-preview"></div>
+    </section>
+
+    <!-- 看视频 -->
+    <section class="tab-pane" id="pane-episodes">
+      <h2 class="section-title">📺 Big Muzzy Part 1</h2>
+      <div class="ep-grid" id="ep-grid-1"></div>
+      <h2 class="section-title">📺 Big Muzzy Part 2</h2>
+      <div class="ep-grid" id="ep-grid-2"></div>
+    </section>
+
+    <!-- 学单词 -->
+    <section class="tab-pane" id="pane-vocab">
+      <div id="vocab-content"></div>
+    </section>
+
+    <!-- 成就 -->
+    <section class="tab-pane" id="pane-history">
+      <div id="history-content"></div>
+    </section>
+
+    <!-- 说明 -->
+    <section class="tab-pane" id="pane-about">
+      <div id="about-content"></div>
+    </section>
+
+  </main>
+
+  <!-- 提示消息 -->
+  <div class="toast" id="toast"></div>
+
+  <!-- 视频播放弹窗 -->
+  <div class="video-modal" id="video-modal">
+    <div class="vm-inner">
+      <div class="vm-header">
+        <div class="vm-title" id="vm-title"></div>
+        <button class="vm-close" onclick="closeVideo()">✕</button>
+      </div>
+      <video id="vm-video" controls playsinline
+             style="width:100%;display:block;background:#000;max-height:60vh">
+      </video>
+      <div class="vm-footer">
+        <button class="vm-watched-btn" id="vm-watched-btn" onclick="markWatchedFromModal()">
+          看完了，标记已看 ✓
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
