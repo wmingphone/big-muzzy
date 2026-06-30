@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="一个适合儿童每日英语启蒙的 Big Muzzy 学习记录网页，包含视频进度、单词练习、星星奖励和本地成就。">
   <title>Big Muzzy 每日学习</title>
-  <link rel="stylesheet" href="style.css?v=20260624-video-modal">
+  <link rel="stylesheet" href="style.css?v=20260701-auth">
 </head>
 <body>
 
@@ -19,10 +19,13 @@
           <div class="logo-sub">每日英语学习</div>
         </div>
       </div>
-      <div class="streak-box">
-        <span>🔥</span>
-        <span class="streak-num" id="streak-num">0</span>
-        <span class="streak-label">天</span>
+      <div class="header-actions">
+        <button class="account-btn" id="account-btn" onclick="openAuthModal()">登录</button>
+        <div class="streak-box">
+          <span>🔥</span>
+          <span class="streak-num" id="streak-num">0</span>
+          <span class="streak-label">天</span>
+        </div>
       </div>
     </div>
   </header>
@@ -106,6 +109,20 @@
   <!-- 提示消息 -->
   <div class="toast" id="toast"></div>
 
+  <!-- 注册登录弹窗 -->
+  <div class="auth-modal" id="auth-modal">
+    <div class="auth-inner">
+      <div class="auth-header">
+        <div>
+          <div class="auth-kicker">家庭本地账号</div>
+          <div class="auth-title" id="auth-title">登录学习账号</div>
+        </div>
+        <button class="auth-close" onclick="closeAuthModal()">✕</button>
+      </div>
+      <div id="auth-content"></div>
+    </div>
+  </div>
+
   <!-- 视频播放弹窗 -->
   <div class="video-modal" id="video-modal">
     <div class="vm-inner">
@@ -125,6 +142,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20260624-video-modal"></script>
+  <script src="app.js?v=20260701-auth"></script>
 </body>
 </html>

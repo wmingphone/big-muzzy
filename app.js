@@ -212,6 +212,11 @@ function speak(word) {
 // ============================================================
 
 const STORE_KEY = 'bigmuzzy_v1'
+const AUTH_KEY = 'bigmuzzy_accounts_v1'
+const SESSION_KEY = 'bigmuzzy_session_v1'
+
+let currentUser = null
+let activeStoreKey = STORE_KEY
 
 function defaultState() {
   return {
@@ -227,16 +232,205 @@ function defaultState() {
 
 function load() {
   try {
-    const raw = localStorage.getItem(STORE_KEY)
+    const raw = localStorage.getItem(activeStoreKey)
     return raw ? Object.assign(defaultState(), JSON.parse(raw)) : defaultState()
   } catch { return defaultState() }
 }
 
 function save() {
-  localStorage.setItem(STORE_KEY, JSON.stringify(state))
+  localStorage.setItem(activeStoreKey, JSON.stringify(state))
 }
 
-let state = load()
+let state = defaultState()
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]))
+}
+
+function hashPassword(username, password) {
+  const text = `${username.trim().toLowerCase()}:${password}`
+  let hash = 2166136261
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(16)
+}
+
+function accountProgressKey(username) {
+  return `bigmuzzy_v1_user_${encodeURIComponent(username.trim().toLowerCase())}`
+}
+
+function loadAccounts() {
+  try {
+    const raw = localStorage.getItem(AUTH_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveAccounts(accounts) {
+  localStorage.setItem(AUTH_KEY, JSON.stringify(accounts))
+}
+
+function findAccount(username) {
+  const normalized = username.trim().toLowerCase()
+  return loadAccounts().find(account => account.username.toLowerCase() === normalized)
+}
+
+function initAuth() {
+  try {
+    const session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null')
+    const account = session && findAccount(session.username)
+    currentUser = account ? { username: account.username } : null
+  } catch {
+    currentUser = null
+  }
+  activeStoreKey = currentUser ? accountProgressKey(currentUser.username) : STORE_KEY
+  state = load()
+}
+
+function renderAccountButton() {
+  const btn = document.getElementById('account-btn')
+  if (!btn) return
+  btn.textContent = currentUser ? `账号：${currentUser.username}` : '登录'
+  btn.classList.toggle('signed-in', Boolean(currentUser))
+}
+
+function renderAll() {
+  renderHeader()
+  renderProgress()
+  renderToday()
+  renderEpisodes()
+  renderActivePane()
+  renderAccountButton()
+}
+
+function renderActivePane() {
+  const activeTab = document.querySelector('.tab.active')?.dataset.tab
+  if (activeTab === 'vocab') renderVocab()
+  if (activeTab === 'history') renderHistory()
+  if (activeTab === 'about') renderAbout()
+}
+
+function openAuthModal(mode = 'login') {
+  renderAuthContent(mode)
+  document.getElementById('auth-modal').classList.add('open')
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-modal').classList.remove('open')
+}
+
+function renderAuthContent(mode = 'login') {
+  const isRegister = mode === 'register'
+  document.getElementById('auth-title').textContent = currentUser ? '学习账号' : (isRegister ? '注册学习账号' : '登录学习账号')
+
+  const content = document.getElementById('auth-content')
+  if (currentUser) {
+    content.innerHTML = `
+      <div class="auth-current">
+        <div class="auth-avatar">${escapeHtml(currentUser.username).slice(0, 1).toUpperCase()}</div>
+        <div>
+          <div class="auth-current-name">${escapeHtml(currentUser.username)}</div>
+          <div class="auth-current-sub">当前账号的学习进度会单独保存在这个浏览器里。</div>
+        </div>
+      </div>
+      <button class="auth-submit auth-logout" onclick="logout()">退出登录</button>
+      <div class="auth-note">这是本地学习账号，不会同步到云端；换手机或清除浏览器数据后需要重新建立进度。</div>
+    `
+    return
+  }
+
+  content.innerHTML = `
+    <div class="auth-tabs">
+      <button class="auth-tab ${!isRegister ? 'active' : ''}" onclick="renderAuthContent('login')">登录</button>
+      <button class="auth-tab ${isRegister ? 'active' : ''}" onclick="renderAuthContent('register')">注册</button>
+    </div>
+    <form class="auth-form" onsubmit="submitAuth(event, '${isRegister ? 'register' : 'login'}')">
+      <label class="auth-field">
+        <span>账号名</span>
+        <input id="auth-username" autocomplete="username" maxlength="16" placeholder="例如 xiaoming">
+      </label>
+      <label class="auth-field">
+        <span>学习口令</span>
+        <input id="auth-password" type="password" autocomplete="${isRegister ? 'new-password' : 'current-password'}" maxlength="32" placeholder="4 位以上">
+      </label>
+      <button class="auth-submit" type="submit">${isRegister ? '注册并登录' : '登录'}</button>
+    </form>
+    <div class="auth-note">账号和口令只保存在当前浏览器，请不要使用银行卡、邮箱等真实常用密码。</div>
+  `
+  setTimeout(() => document.getElementById('auth-username')?.focus(), 0)
+}
+
+function submitAuth(event, mode) {
+  event.preventDefault()
+  const username = document.getElementById('auth-username').value.trim()
+  const password = document.getElementById('auth-password').value
+  if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]{2,16}$/.test(username)) {
+    showToast('账号名需要 2-16 位，可用中文、英文、数字或下划线')
+    return
+  }
+  if (password.length < 4) {
+    showToast('学习口令至少 4 位')
+    return
+  }
+
+  if (mode === 'register') {
+    const accounts = loadAccounts()
+    if (accounts.some(account => account.username.toLowerCase() === username.toLowerCase())) {
+      showToast('这个账号名已经注册过了')
+      return
+    }
+    accounts.push({
+      username,
+      passwordHash: hashPassword(username, password),
+      createdAt: new Date().toISOString(),
+    })
+    saveAccounts(accounts)
+    loginAs(username)
+    showToast('注册成功，已登录')
+    closeAuthModal()
+    return
+  }
+
+  const account = findAccount(username)
+  if (!account || account.passwordHash !== hashPassword(account.username, password)) {
+    showToast('账号名或口令不正确')
+    return
+  }
+  loginAs(account.username)
+  showToast('登录成功')
+  closeAuthModal()
+}
+
+function loginAs(username) {
+  save()
+  currentUser = { username }
+  localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser))
+  activeStoreKey = accountProgressKey(username)
+  state = load()
+  updateStreak()
+  renderAll()
+}
+
+function logout() {
+  save()
+  currentUser = null
+  localStorage.removeItem(SESSION_KEY)
+  activeStoreKey = STORE_KEY
+  state = load()
+  closeAuthModal()
+  renderAll()
+  showToast('已退出登录')
+}
 
 // ============================================================
 //  工具函数
@@ -726,7 +920,12 @@ function renderAbout() {
       <article class="about-card">
         <div class="about-icon">💾</div>
         <h3>进度保存</h3>
-        <p>学习记录只保存在当前浏览器的 localStorage 中，不会上传到服务器。换设备或清理浏览器数据后，进度可能会消失。</p>
+        <p>学习记录只保存在当前浏览器的 localStorage 中，不会上传到服务器。登录本地账号后，不同孩子可以分开保存进度。</p>
+      </article>
+      <article class="about-card">
+        <div class="about-icon">👤</div>
+        <h3>注册登录</h3>
+        <p>这里的账号是家庭本地学习账号，不是云端账号。换设备、换浏览器或清理浏览器数据后，账号和进度可能会消失。</p>
       </article>
       <article class="about-card">
         <div class="about-icon">📺</div>
@@ -808,10 +1007,8 @@ function initTabs() {
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+  initAuth()
   updateStreak()
-  renderHeader()
-  renderProgress()
-  renderToday()
-  renderEpisodes()
+  renderAll()
   initTabs()
 })
